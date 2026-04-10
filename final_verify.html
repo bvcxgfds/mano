@@ -1,15 +1,1 @@
-cat > /home/pi/usbreset.c << 'EOF'
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <sys/ioctl.h>
-#include <linux/usbdevice_fs.h>
-
-int main(int argc, char *argv[]) {
-    int fd = open(argv[1], O_WRONLY);
-    ioctl(fd, USBDEVFS_RESET, 0);
-    close(fd);
-    return 0;
-}
-EOF
+gcc -o /home/pi/usbreset /home/pi/usbreset.c
