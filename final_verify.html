@@ -1,1 +1,93 @@
-pi ALL=(ALL) NOPASSWD: /home/pi/usbreset
+import os
+import time
+import subprocess
+
+# --- CONFIGURATION ---
+watch_folder = "/home/pi/Downloads"
+printer_name = "Samsung_M332x_382x_402x_Series"
+USB_PATH = "/dev/bus/usb/003/003"  # Samsung M332x 382x 402x
+
+def reset_printer_usb():
+    """Reset USB to wake printer — simulates test button press"""
+    print("🔄 Resetting printer USB...")
+    result = subprocess.run(
+        ["sudo", "/home/pi/usbreset", USB_PATH],
+        capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        print("✅ USB reset successful — printer is awake")
+        time.sleep(3)
+    else:
+        print(f"⚠️  USB reset failed: {result.stderr}")
+
+def repair_pdf(input_path, output_path):
+    """Repair PDF using Ghostscript to avoid corrupted file errors."""
+    try:
+        subprocess.run(
+            ["gs", "-q", "-o", output_path, "-sDEVICE=pdfwrite", input_path],
+            check=True
+        )
+        return output_path
+    except Exception as e:
+        print(f"PDF REPAIR ERROR: {e}")
+        return input_path
+
+def print_pdf(path, filename):
+    """Send PDF to printer with specific side logic and return success status."""
+    options = ["-o", "fit-to-page"]
+
+    if "print_double" in filename.lower():
+        options.extend(["-o", "sides=two-sided-long-edge", "-o", "Duplex=DuplexNoTumble"])
+        print(f"MODE: Duplex (Double-Sided) for {filename}")
+    elif "print_single" in filename.lower():
+        options.extend(["-o", "sides=one-sided", "-o", "Duplex=None"])
+        print(f"MODE: Single-Sided for {filename}")
+    else:
+        options.extend(["-o", "sides=one-sided", "-o", "Duplex=None"])
+        print(f"MODE: Defaulting to Single-Sided for {filename}")
+
+    try:
+        cmd = ["lp", "-d", printer_name] + options + [path]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        if result.returncode == 0:
+            print(f"PRINTED SUCCESSFULLY: {path}")
+            return True
+        else:
+            print(f"PRINT ERROR: {result.stderr}")
+            return False
+    except Exception as e:
+        print(f"SUBPROCESS ERROR: {e}")
+        return False
+
+# --- STARTUP ---
+reset_printer_usb()
+print(f"👀 Watching {watch_folder} for PDF files...")
+
+# --- MAIN LOOP ---
+while True:
+    for file in os.listdir(watch_folder):
+        if file.lower().endswith(".pdf") and not file.startswith("fixed_"):
+            original_path = os.path.join(watch_folder, file)
+            print("-" * 30)
+            print(f"📄 PROCESSING: {file}")
+
+            # 1. Repair PDF first
+            repaired_path = os.path.join(watch_folder, "fixed_" + file)
+            repaired_path = repair_pdf(original_path, repaired_path)
+
+            # 2. Print repaired PDF
+            if print_pdf(repaired_path, file):
+                # 3. Delete files after successful print
+                try:
+                    time.sleep(0.5)
+                    os.remove(original_path)
+                    if os.path.exists(repaired_path) and repaired_path != original_path:
+                        os.remove(repaired_path)
+                    print("🗑️  DONE: Files deleted successfully.")
+                except Exception as e:
+                    print(f"FILE DELETE ERROR: {e}")
+            else:
+                print(f"🔴 FAILED: Keeping files for troubleshooting.")
+
+    time.sleep(2)
