@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Printer Verification - Pi 3.5"</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700;900&display=swap"
+    rel="stylesheet">
+  <style>
+    * {
+      cursor: none !important;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #0e2a47;
+      --surface: #0e2a47;
+      --card: #1e293b;
+      --border: #334155;
+      --accent: #ffffff;
+      --accent2: #2563eb;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --text: #ffffff;
+      --muted: #94a3b8;
+      --ok: #22c55e;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Barlow', sans-serif;
+      overflow: hidden;
+      touch-action: manipulation;
+      cursor: none;
+    }
+
+    /* ─── OFFLINE OVERLAY ─── */
+
+    #offlineOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: var(--bg);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+      padding: 32px;
+    }
+
+    #offlineOverlay.visible {
+      display: flex;
+    }
+
+    .offline-ring {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      border: 2px solid #1e3a5f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .offline-ring::before {
+      content: '';
+      position: absolute;
+      width: 186px;
+      height: 186px;
+      border-radius: 50%;
+      border: 1.5px solid #1a3353;
+      animation: offlinePulse 2s ease-out infinite;
+    }
+
+    .offline-ring::after {
+      content: '';
+      position: absolute;
+      width: 222px;
+      height: 222px;
+      border-radius: 50%;
+      border: 1px solid #152740;
+      animation: offlinePulse 2s ease-out infinite 0.5s;
+    }
+
+    @keyframes offlinePulse {
+      0% {
+        transform: scale(0.85);
+        opacity: 0.9;
+      }
+
+      100% {
+        transform: scale(1.15);
+        opacity: 0;
+      }
+    }
+
+    .offline-wifi-icon {
+      font-size: 40px;
+      line-height: 1;
+      color: #475569;
+      /* SVG wifi-off drawn inline so no external font needed */
+    }
+
+    .offline-title {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text);
+      text-align: center;
+      margin: 0;
+    }
+
+    .offline-sub {
+      font-size: 18px;
+      color: var(--muted);
+      text-align: center;
+      max-width: 320px;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .offline-dots {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .offline-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent2);
+      animation: dotBounce 1.4s infinite ease-in-out;
+    }
+
+    .offline-dot:nth-child(1) {
+      animation-delay: 0s;
+    }
+
+    .offline-dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .offline-dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes dotBounce {
+
+      0%,
+      80%,
+      100% {
+        transform: scale(0.55);
+        opacity: 0.35;
+      }
+
+      40% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .offline-status {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 15px;
+      letter-spacing: 3px;
+      color: #334155;
+      text-transform: uppercase;
+      margin: 0;
+    }
+
+    .offline-brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 4px;
+    }
+
+    .offline-logo-wrap {
+      width: 72px;
+      height: 72px;
+      border-radius: 14px;
+      border: 1.5px solid #334155;
+      background: #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .offline-logo-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 12px;
+      display: block;
+    }
+
+    .offline-brand-name {
+      font-family: 'Barlow', sans-serif;
+      font-size: 40px;
+      font-weight: 200;
+      letter-spacing: 1px;
+      color: #ffffff;
+      margin: 0;
+      line-height: 1;
+    }
+
+    .offline-brand-name span {
+      color: var(--accent2);
+      font-weight: 700;
+    }
+
+
+
+    /* ─── MAIN APP ─── */
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto auto auto;
+      width: 100vw;
+      height: 100vh;
+      padding: 10px 12px;
+      gap: 8px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+      position: relative;
+    }
+
+    .header-badge {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: #22c55e;
+      background: rgba(34, 197, 94, 0.12);
+      border: 1.5px solid #22c55e;
+      padding: 4px 12px;
+      border-radius: 6px;
+      letter-spacing: 2px;
+      position: absolute;
+      right: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 200;
+      letter-spacing: 0.5px;
+    
+      color: var(--text);
+    }
+
+    h2 span {
+      font-weight: 700;
+    }
+    
+
+
+    .header-logo {
+      width: 36px;
+      height: 36px;
+      object-fit: contain;
+    }
+
+
+    .inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    label {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 30px;
+      font-family: 'Share Tech Mono', monospace;
+      font-weight: 400;
+      letter-spacing: 4px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      text-align: center;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      caret-color: var(--text);
+    }
+
+    input:focus,
+    input.active {
+      border-color: var(--accent2);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    }
+
+    input::placeholder {
+      color: var(--muted);
+      font-size: 18px;
+      letter-spacing: 2px;
+    }
+
+    input.locked {
+      opacity: 0.45;
+      border-color: var(--border) !important;
+      box-shadow: none !important;
+    }
+
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 6px;
+      width: 100%;
+      height: 100%;
+    }
+
+    .keypad button {
+      width: 100%;
+      height: 100%;
+      font-size: 30px;
+      font-weight: 700;
+      font-family: 'Barlow', sans-serif;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.08s, transform 0.07s, box-shadow 0.08s, opacity 0.2s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .keypad button::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0);
+      border-radius: inherit;
+      transition: background 0.15s;
+    }
+
+    .keypad button:active::after {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .keypad button:active {
+      transform: scale(0.94);
+    }
+
+    .keypad button:not(.clear):not(.backspace):hover {
+      background: #3d5068;
+      border-color: var(--border);
+    }
+
+    .keypad .backspace {
+      background: var(--warn);
+      border-color: var(--warn);
+      color: white;
+      font-size: 26px;
+    }
+
+    .keypad .backspace:active {
+      background: #d97706;
+    }
+
+    .keypad .clear {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: white;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+
+    .keypad .clear:active {
+      background: #dc2626;
+    }
+
+    .keypad button.locked,
+    .verify-btn.locked {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    .verify-btn {
+      width: 100%;
+      padding: 0;
+      height: 58px;
+      font-size: 22px;
+      font-weight: 600;
+      font-family: 'Barlow', sans-serif;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: var(--accent2);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      cursor: pointer;
+      transition: opacity 0.1s, transform 0.08s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .verify-btn:active {
+      opacity: 0.88;
+      transform: scale(0.98);
+    }
+
+    #result {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 17px;
+      text-align: center;
+      height: 24px;
+      letter-spacing: 0.5px;
+      transition: color 0.2s;
+      margin: 0;
+    }
+
+    #progressBarWrap {
+      width: 100%;
+      height: 6px;
+      background: #1e293b;
+      border-radius: 999px;
+      overflow: hidden;
+      display: none;
+    }
+
+    #progressBar {
+      height: 100%;
+      width: 0%;
+      background: #22c55e;
+      border-radius: 999px;
+      transition: width 0.2s ease;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ─── OFFLINE OVERLAY ─── -->
+  <div id="offlineOverlay" role="status" aria-live="polite">
+
+    <div class="offline-brand">
+      <div class="offline-logo-wrap">
+        <img src="logo.png" alt="ThePrintEzy logo" />
+      </div>
+      <p class="offline-brand-name">The<span>PrintEzy</span></p>
+    </div>
+
+    <div class="offline-ring">
+      <svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.5"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="1" y1="1" x2="23" y2="23" />
+        <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
+        <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
+        <path d="M10.71 5.05A16 16 0 0 1 22.56 9" />
+        <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" />
+        <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+        <line x1="12" y1="20" x2="12.01" y2="20" />
+      </svg>
+    </div>
+
+    <p class="offline-title">No Connection</p>
+    <p class="offline-sub">Please connect to the internet to use Printer Verification</p>
+
+    <div class="offline-dots" aria-hidden="true">
+      <div class="offline-dot"></div>
+      <div class="offline-dot"></div>
+      <div class="offline-dot"></div>
+    </div>
+
+    <p class="offline-status">Waiting for connection</p>
+  </div>
+
+  <!-- ─── MAIN APP ─── -->
+  <div class="wrapper" id="appWrapper">
+
+    <div class="header">
+      <div class="header-left">
+        <img src="logo.png" alt="ThePrintEzy Logo" class="header-logo">
+        <h2>The<span>PrintEzy</span> Verification</h2>
+      </div>
+      <span class="header-badge">SECURE</span>
+    </div>
+
+    <div class="inputs">
+      <div class="field">
+        <label>Print ID</label>
+        <input id="printId" placeholder="––––––" maxlength="6" readonly />
+      </div>
+      <div class="field">
+        <label>OTP</label>
+        <input id="otp" placeholder="––––" maxlength="4" readonly />
+      </div>
+    </div>
+
+    <div class="keypad" id="keypad">
+      <button onclick="addNumber(1)">1</button>
+      <button onclick="addNumber(2)">2</button>
+      <button onclick="addNumber(3)">3</button>
+      <button class="backspace" onclick="backspace()">⌫</button>
+
+      <button onclick="addNumber(4)">4</button>
+      <button onclick="addNumber(5)">5</button>
+      <button onclick="addNumber(6)">6</button>
+      <button class="clear" onclick="clearInput()">CLR</button>
+
+      <button onclick="addNumber(7)">7</button>
+      <button onclick="addNumber(8)">8</button>
+      <button onclick="addNumber(9)">9</button>
+      <button onclick="addNumber(0)">0</button>
+    </div>
+
+    <button class="verify-btn" id="verifyBtn" onclick="verify()">
+      Verify
+    </button>
+
+    <p id="result"></p>
+
+    <div id="progressBarWrap">
+      <div id="progressBar"></div>
+    </div>
+
+  </div>
+
+  <script>
+    /* ─── INTERNET DETECTION (real ping, not just navigator.onLine) ─── */
+
+    const overlay = document.getElementById("offlineOverlay");
+    const appWrapper = document.getElementById("appWrapper");
+
+    let connectivityTimer = null;
+    let lastKnownState = null; // "online" | "offline" | null
+
+    function showOffline() {
+      if (lastKnownState === "offline") return;
+      lastKnownState = "offline";
+      overlay.classList.add("visible");
+      appWrapper.style.visibility = "hidden";
+      appWrapper.style.pointerEvents = "none";
+    }
+
+    function showOnline() {
+      if (lastKnownState === "online") return;
+      lastKnownState = "online";
+      overlay.classList.remove("visible");
+      appWrapper.style.visibility = "visible";
+      appWrapper.style.pointerEvents = "";
+    }
+
+    // Ping your own backend — already whitelisted by CORS, zero extra cost.
+    // Falls back to a 1×1 favicon on Google (no-cors, just checks reachability).
+    async function checkInternet() {
+      // Fast path: browser already knows there's no network at all
+      if (!navigator.onLine) { showOffline(); return; }
+
+      try {
+        // Try your own server first (same origin policy already allows this)
+        const res = await fetch(
+          "https://printflash-backend.onrender.com/verify",
+          {
+            method: "HEAD",           // no body sent or received
+            cache: "no-store",       // never use cache
+            signal: AbortSignal.timeout(5000)  // give up after 5 s
+          }
+        );
+        // Any HTTP response means internet is reachable
+        showOnline();
+      } catch (_) {
+        // Network error, DNS failure, or timeout → no real internet
+        showOffline();
+      }
+    }
+
+    // Poll every 5 seconds so the screen reacts quickly either way
+    function startPolling() {
+      checkInternet();
+      connectivityTimer = setInterval(checkInternet, 5000);
+    }
+
+    // browser online/offline events as fast triggers (still validate with real ping)
+    window.addEventListener("online", checkInternet);
+    window.addEventListener("offline", showOffline);
+
+    startPolling();
+
+    /* ─── APP LOGIC ─── */
+
+    let activeField = "printId";
+    let isLocked = false;
+    let countdownTimer = null;
+
+    const printInput = document.getElementById("printId");
+    const otpInput = document.getElementById("otp");
+    const keypadEl = document.getElementById("keypad");
+    const verifyBtn = document.getElementById("verifyBtn");
+    const resultEl = document.getElementById("result");
+    const progressWrap = document.getElementById("progressBarWrap");
+    const progressBar = document.getElementById("progressBar");
+
+    function setActive(field) {
+      if (isLocked) return;
+      activeField = field;
+      printInput.classList.toggle("active", field === "printId");
+      otpInput.classList.toggle("active", field === "otp");
+    }
+
+    setActive("printId");
+
+    printInput.addEventListener("click", () => setActive("printId"));
+    otpInput.addEventListener("click", () => setActive("otp"));
+
+    function addNumber(num) {
+      if (isLocked) return;
+      const input = activeField === "printId" ? printInput : otpInput;
+      if ((activeField === "printId" && input.value.length < 6) ||
+        (activeField === "otp" && input.value.length < 4)) {
+        input.value += num;
+      }
+      if (activeField === "printId" && printInput.value.length === 6) setActive("otp");
+    }
+
+    function clearInput() {
+      if (isLocked) return;
+      const input = activeField === "printId" ? printInput : otpInput;
+      input.value = "";
+    }
+
+    function backspace() {
+      if (isLocked) return;
+      const input = activeField === "printId" ? printInput : otpInput;
+      input.value = input.value.slice(0, -1);
+    }
+
+    function lockUI() {
+      isLocked = true;
+      keypadEl.querySelectorAll("button").forEach(b => b.classList.add("locked"));
+      verifyBtn.classList.add("locked");
+      printInput.classList.add("locked");
+      otpInput.classList.add("locked");
+      printInput.classList.remove("active");
+      otpInput.classList.remove("active");
+    }
+
+    function unlockUI() {
+      isLocked = false;
+      keypadEl.querySelectorAll("button").forEach(b => b.classList.remove("locked"));
+      verifyBtn.classList.remove("locked");
+      printInput.classList.remove("locked");
+      otpInput.classList.remove("locked");
+      printInput.value = "";
+      otpInput.value = "";
+      resultEl.innerText = "";
+      progressWrap.style.display = "none";
+      progressBar.style.width = "0%";
+      setActive("printId");
+    }
+
+    function startCountdown(seconds) {
+      let remaining = seconds;
+
+      function tick() {
+        const mm = String(Math.floor(remaining / 60)).padStart(2, "0");
+        const ss = String(remaining % 60).padStart(2, "0");
+        resultEl.style.color = "#f59e0b";
+        resultEl.innerText = `⏳  Next print in ${mm}:${ss}`;
+
+        if (remaining <= 0) {
+          clearInterval(countdownTimer);
+          countdownTimer = null;
+          unlockUI();
+          return;
+        }
+        remaining--;
+      }
+
+      tick();
+      countdownTimer = setInterval(tick, 1000);
+    }
+
+    function verify() {
+      if (isLocked) return;
+
+      // Guard: if last ping confirmed no internet, block and show overlay
+      if (lastKnownState === "offline") {
+        showOffline();
+        return;
+      }
+
+      const id = printInput.value;
+      const otp = otpInput.value;
+
+      if (!id || !otp) {
+        resultEl.style.color = "#ef4444";
+        resultEl.innerText = "❌  Enter Print ID and OTP";
+        return;
+      }
+
+      resultEl.style.color = "#94a3b8";
+      resultEl.innerText = "⏳  Verifying...";
+
+      fetch("https://printflash-backend.onrender.com/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ printId: id, otp: otp }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.verified) {
+            resultEl.style.color = "#22c55e";
+            resultEl.innerText = "✅  Verified. Downloading...";
+
+            const printType = data.print_type || "single";
+
+            fetch(`https://printflash-backend.onrender.com/download/${id}`)
+              .then((r) => {
+                const contentLength = r.headers.get("Content-Length");
+                const total = contentLength ? parseInt(contentLength, 10) : null;
+                let loaded = 0;
+                const reader = r.body.getReader();
+                const chunks = [];
+
+                function pump() {
+                  return reader.read().then(({ done, value }) => {
+                    if (done) {
+                      progressWrap.style.display = "none";
+                      progressBar.style.width = "0%";
+
+                      resultEl.style.color = "#2563eb";
+                      resultEl.innerText = "🖨️  Printing...";
+
+                      const blob = new Blob(chunks);
+                      const link = document.createElement("a");
+                      link.href = URL.createObjectURL(blob);
+                      link.download = `print_${printType}.pdf`;
+                      link.click();
+
+                      setTimeout(() => {
+                        lockUI();
+                        setTimeout(() => startCountdown(120), 1500);
+                      }, 2000);
+
+                      return;
+                    }
+
+                    chunks.push(value);
+                    loaded += value.length;
+
+                    if (total) {
+                      const pct = Math.min(Math.round((loaded / total) * 100), 100);
+                      resultEl.style.color = "#22c55e";
+                      resultEl.innerText = `⬇️  Downloading... ${pct}%`;
+                      progressWrap.style.display = "block";
+                      progressBar.style.width = pct + "%";
+                    } else {
+                      const kb = Math.round(loaded / 1024);
+                      resultEl.style.color = "#22c55e";
+                      resultEl.innerText = `⬇️  Downloading... ${kb} KB`;
+                      progressWrap.style.display = "block";
+                    }
+
+                    return pump();
+                  });
+                }
+
+                return pump();
+              })
+              .catch(() => {
+                resultEl.style.color = "#ef4444";
+                resultEl.innerText = "❌  Download failed";
+              });
+
+          } else {
+            resultEl.style.color = "#ef4444";
+            resultEl.innerText = "❌  Wrong ID or OTP";
+            printInput.value = "";
+            otpInput.value = "";
+            setActive("printId");
+          }
+        })
+        .catch(() => {
+          resultEl.style.color = "#ef4444";
+          resultEl.innerText = "❌  Server error";
+        });
+    }
+  </script>
+</body>
+
+</html>
